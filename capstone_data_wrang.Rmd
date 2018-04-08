@@ -1,0 +1,93 @@
+---
+title: "Capstone Project - Data Wrangling"
+author: "Radhai"
+date: "April 2, 2018"
+output: html_document
+---
+Setting row.names=NULL, for the class names to be read as another column, data is therefore not read as matrix
+The first 3 lines were not data and has some information not relevant to be loaded into dataframe, so skipped them.
+```{r}
+library(dplyr)
+library(tidyr)
+library(stringr)
+```
+
+```{r setup, include=FALSE}
+
+imageSeg<-read.table("segmentation.data",skip=3,header=TRUE,sep=",",row.names=NULL)
+
+```
+Looking into the data
+```{r}
+dim(imageSeg)
+lapply(imageSeg,class)
+```
+
+Modifying the column names and adding the name to the classification column as "Class"
+```{r}
+str(imageSeg)
+col<-names(imageSeg)
+col<-str_replace_all(col,"[.]","_")
+col[1]<-"Class"
+names(imageSeg)<-col
+glimpse(imageSeg)
+```
+Extracting numeric column indexes to the vector numericIdx
+
+```{r}
+numericIdx<-NULL
+dataclass<-lapply(imageSeg,class)
+for (i in 1:length(dataclass)){
+  if(dataclass[i]=="numeric"){
+    numericIdx<-c(numericIdx,i)
+  }
+}
+```
+Checking the summary for numeric columns
+
+
+```{r}
+summary(imageSeg[,numericIdx])
+
+
+```
+Looking for the count of  non-NA rows
+```{r}
+glimpse(imageSeg)
+sum(complete.cases(imageSeg))
+```
+###writing the data frame to a data file and reloading for preprocessing
+```{r}
+write.table(imageSeg,"imageSegCN.data",sep=",",col.names=TRUE)
+data<-read.table("imageSegCN.data",header=TRUE,sep=",")
+glimpse(data)
+
+```
+
+The  the complete cases function makes it obvious that the data does not have any na values, the number of observations shown by glimpse is the same as the number of rows count given by complete.cases.
+
+###Preprocessed data
+Loading the "caret" library
+
+```{r}
+library(caret)
+```
+###Scaling and centering each data value 
+```{r}
+
+ppimageSeg<-preProcess(numericdata,method=c("center","scale","zv","nzv"))
+imageSegTrans<-predict(ppimageSeg,numericdata)
+```
+###Transformed data and the original data-- A look..
+```{r}
+summary(imageSegTrans)
+summary(numericdata)
+
+```
+###writing the preprocessed data frame to a data file, this data file will not have the class column
+```{r}
+
+write.table(imageSegTrans,"imageSegPP.data",sep=",",col.names=TRUE)
+
+```
+
