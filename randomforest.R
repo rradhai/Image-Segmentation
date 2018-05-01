@@ -4,6 +4,7 @@ library(dplyr)
 library(ggplot2)
 library(stringr)
 library(randomForest)
+library(caret)
 
 
 ## Loading the training data
@@ -56,30 +57,34 @@ testTrans<-predict(preproctest,testnum)
 testTranscl<-cbind(testClass,testTrans)
 
 #RandomForest model
-model.rf = randomForest(Class ~ ., data = imageSeg, 
-                        nodesize = 25, ntree = 4000)
+model.rf = randomForest(Class ~ ., data = imageSeg, nodesize = 25, ntree = 4000)
 print(model.rf)
 
 #Error rate is pretty high. Trying with different node sizes and ntree values.
-model.rf2 = randomForest(Class ~ ., data=imageSegTranscl, nodesize=10, 
-                         ntree=1000, importance =TRUE)
+model.rf2 = randomForest(Class ~ ., data=imageSegTranscl, nodesize=20, ntree=1000,importance = TRUE)
 print(model.rf2)
+round(importance(model.rf2),2)
 
-model.rf3 = randomForest(Class ~ ., data=imageSegTranscl, ntree=500,
-                         importance = TRUE, proximity = TRUE)
+model.rf3 = randomForest(Class ~ ., data=imageSegTranscl, ntree=500, nodesize=10,
+                         importance = TRUE)
 print(model.rf3)
 
+model.rf4 = randomForest(Class ~ ., data=imageSegTranscl, ntree=500,
+                         importance = TRUE)
+print(model.rf4)
 #model.rf3 has a lower error rate of 2.24%
 round(importance(model.rf2),2)
 
 #prediction on test data
-test.rf3 = randomForest(testClass ~ .,data=testTranscl,ntree=1000)
+test.rf3 = randomForest(testClass ~ .,data=testTranscl,ntree=500)
 print(test.rf3)
 
 #RandomForest with cross validation
 fitcontrol = trainControl(method="cv",number=10)
 imageForestCV = train(Class~., data=imageSegTranscl, method="rf", trControl=fitcontrol)
 print(imageForestCV)
+predForestCV = predict(imageForestCV, newdata = imageSegTranscl)
+table(imageSegTranscl$Class,predForestCV)
 
 predictForestCV = predict(imageForestCV, newdata = testTranscl)
 table(testTranscl$testClass,predictForestCV)
