@@ -1,0 +1,403 @@
+---
+title: "Image Segmentation -Capstone Project"
+author: "Radhai"
+date: "April 21, 2018"
+output:
+  word_document: default
+  pdf_document: default
+  html_document: default
+---
+
+##Project Goal 
+
+The goal of segmentation is to simplify and/or change the representation of an image into something that is more meaningful and easier to analyze.
+
+Segmentation is generally the first stage in any attempt to analyze or interpret an image automatically. Segmentation bridges the gap between low-level image processing and high-level image processing.
+
+This has application in various areas:
+ Industrial inspection
+ Optical character recognition (OCR) 
+ Tracking of objects in a sequence of images 
+ Classification of terrains visible in satellite images. 
+ Detection and measurement of bone, tissue, etc., in medical images.
+
+
+##Dataset
+I downloaded the data available in the following link for machine learning purpose:
+[Image Segmentation](https://archive.ics.uci.edu/ml/datasets/Image+Segmentation)
+
+##My approach in classifying this data:
+1. Data Cleaning
+  The dataset does not have null values. Most of the field values are pre-processed and hence does not seem to need an extensive data cleaning.
+  The classification field does not have a field name, the field names has "." character. I need to do correct them.
+2. Pre-processing:
+  Use the R functions like: summary, cor, plot, lm, preprocessing commands in "caret" package to preprocess and understand the relationship between different columns and the Class variable.
+3. Create a model that will classify the data accurately into seven classes.
+4. Test the model on the test data. I tried with SVM (Support Vector Machine) algorithm, GLM, Tree and RandomForest models with cross validation technique for this classification problem.
+
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+library(dplyr)
+library(ggplot2)
+library(stringr)
+
+imageSeg<-read.table("segmentation.test",skip=3,header=TRUE,sep=",",row.names=NULL)
+col<-names(imageSeg)
+col<-str_replace_all(col,"[.]","_")
+col[1]<-"Class"
+names(imageSeg)<-col
+imageSeg$Class = as.factor(imageSeg$Class)
+```
+
+
+##Exploratory Analysis
+
+###EXGREEN vs EXRED
+```{r}
+ggplot(imageSeg,aes(x=EXGREEN_MEAN,y=EXRED_MEAN,col=Class))+geom_jitter()
+```
+
+Obviously Grass has the highest EXGREEN_MEAN and Brickface has high EXRED_MEAN, as anyone would expect. In addition, we can see that Sky has low EXRED_MEAN as well as EXGREEN_MEAN.
+
+###INTENSITY vs HUE
+
+```{r echo=FALSE}
+ggplot(imageSeg, aes(x=INTENSITY_MEAN,y=HUE_MEAN,col=Class))+geom_jitter()
+```
+
+Evidently, we can see Grass has the greatest HUE_MEAN, while FOLIAGE has the lowest HUE_MEAN. Also, Sky has the greatest INTENSITY_MEAN.
+
+###VEDGE vs HEDGE
+As per the plot, the variables are correlated as shown by the numbers above. 
+```{r echo=FALSE}
+ggplot(imageSeg,aes(x=VEDGE_MEAN,y=HEDGE_MEAN,col=Class))+geom_jitter()
+```
+
+Also we can observe that Brickface has very low HEDGE_MEAN and VEDGE_MEAN. Also Cement has very low VEDGE_MEAN.
+
+###Correlation between the plotted features
+```{r echo=FALSE}
+cor(imageSeg$EXGREEN_MEAN,imageSeg$EXRED_MEAN)
+cor(imageSeg$INTENSITY_MEAN,imageSeg$HUE_MEAN)
+cor(imageSeg$HEDGE_MEAN,imageSeg$VEDGE_MEAN)
+```
+
+###A bar plot on VALUE_MEAN for all classes
+```{r echo=FALSE}
+ggplot(imageSeg,aes(x=VALUE_MEAN,col=Class))+geom_bar()
+```
+
+This bar plot shows the high value for VALUE_MEAN for Sky class though it does not have significant display for other classes.
+
+
+## Summary of all the observed features of our dataset
+
+```{r  echo=FALSE}
+summary(imageSeg)
+
+```
+
+As can be seen from the summary, most of the variable have huge difference between their min and the max values. Also, we can see the each variance are in scales that vary highly. As a common practice, we can scale and center the data so as to compare them in a better way.
+
+
+##Preprocessing data
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+library(caret)
+
+```
+
+```{r echo=FALSE}
+
+imagesegnum<-imageSeg[,-1]
+preprocimageseg<-preProcess(imagesegnum,method=c("center","scale","zv","nzv"))
+imageSegTrans<-predict(preprocimageseg,imagesegnum)
+
+```
+
+### a look on data before and after transformation
+```{r  echo=FALSE}
+summary(imageSegTrans)
+
+summary(imageSeg$REGION_CENTROID_COL)
+summary(imageSegTrans$REGION_CENTROID_COL)
+summary(imageSeg$EXRED_MEAN)
+summary(imageSegTrans$EXRED_MEAN)
+```
+
+
+```{r echo=FALSE}
+Class<-imageSeg$Class
+
+imageSegTranscl<-cbind(Class,imageSegTrans)
+test<-read.table("segmentation.data",skip=3,header=TRUE,sep=",",row.names=NULL)
+col1=col
+col1[1]<-"testClass"
+names(test)<-col1
+testnum=test[,-1]
+testClass<-test[,1]
+preproctest<-preProcess(testnum,method=c("center","scale","zv","nzv"))
+testTrans<-predict(preproctest,testnum)
+testTranscl<-cbind(testClass,testTrans)
+```
+
+##Applying SVM (Support Vector Machine) algorithm
+
+```{r echo = FALSE, warning=FALSE, message=FALSE}
+x<-subset(imageSegTranscl,select=-Class)
+y<-imageSegTranscl$Class
+library(e1071) 
+```
+
+
+```{r  echo=FALSE}
+svm.model<-svm(Class~.,data=imageSegTranscl)
+summary(svm.model)
+```
+
+The summary shows the default values assumed for each of the parameters used with this function.
+
+By default, the classification type is chosen and radial kernel is used. The cost value is 1 and gamma is .06.
+
+### Prediction using SVM model
+```{r echo=FALSE}
+pred<-predict(svm.model,x)
+table(pred,y)
+
+```
+
+
+###Creating a tuned model
+```{r echo=FALSE}
+svm_model_after_tune<-svm(Class~.,data=imageSegTranscl,cost=10,gamma=0.5)
+summary(svm_model_after_tune)
+pred2<-predict(svm_model_after_tune,x)
+table(pred2,y)
+```
+
+### Validating the tuned model on test data
+
+```{r echo=FALSE}
+y2<-testClass
+x2<-subset(testTranscl,select=-testClass)
+
+predtest<-predict(svm_model_after_tune,x2)
+table(predtest,y2)
+
+```
+
+#GLM
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+library(ISLR)
+library(boot)
+library(caTools)
+```
+
+Since glm required the classification variable to be of numeric type, I have 
+created a numeric variable with Hence I added a numeric column with values 1 through 7 corresponding to every class.
+
+```{r echo=FALSE}
+data<-imageSeg%>% mutate(cl=if_else(Class=="BRICKFACE",1,+
+                                if_else(Class=="SKY",2,+
+                                if_else(Class=="FOLIAGE",3,+
+                                if_else(Class=="CEMENT",4,+
+                                if_else(Class=="WINDOW",5,+
+                                if_else(Class=="PATH",6,7)))))))
+#remove the default class variable
+datanum<-data[,-1]
+#removing the near zero variance variables that do not help much in classification
+nzv<-nearZeroVar(datanum)
+datanumnzv<-datanum[,-nzv]
+```
+
+I also tried splitting my training data set into 2 sets, just to try with sample.split function. 
+```{r echo=FALSE}
+set.seed(1000)
+split=sample.split(datanumnzv$cl,SplitRatio = 0.65)
+traini=subset(datanumnzv, split == TRUE)
+testi=subset(datanumnzv, split==FALSE)
+```
+
+###GLM model1
+```{r}
+glmodel = glm(cl ~ .,data = traini)
+summary(glmodel)
+```
+
+We can see the independent variables, REGION_CENTROID_COL, REGION_CENTROID_ROW, VALUE_MEAN, SATURATION_MEAN, and HUE_MEAN as highly significant.
+
+###GLM model2
+Let try making a model with just the significant ones.
+```{r  echo=FALSE}
+glmodel1 = glm(cl ~ REGION_CENTROID_COL + REGION_CENTROID_ROW + VALUE_MEAN + SATURATION_MEAN + HUE_MEAN +HEDGE_MEAN + HEDGE_SD + INTENSITY_MEAN, data = traini)
+summary(glmodel1)
+
+
+```
+
+###Prediction of both the models on splitted test data
+```{r echo=FALSE}
+predglm = predict(glmodel, type="response", newdata=testi)
+table(testi$cl,predglm>0.5)
+```
+
+```{r echo=FALSE}
+predglm1 = predict(glmodel1, type="response", newdata=testi)
+table(testi$cl,predglm1>0.5)
+```
+The prediction seems to be close to perfect. The one with the significant features can reduce one more mistake in the prediction. I also tested the model on the test data that was downloaded with this dataset.
+
+```{r echo=FALSE}
+#getting ready with test data for linear model prediction
+testdata<-test%>% mutate(cl=if_else(testClass=="BRICKFACE",1,+
+                          if_else(testClass=="SKY",2,+
+                          if_else(testClass=="FOLIAGE",3,+
+                          if_else(testClass=="CEMENT",4,+
+                          if_else(testClass=="WINDOW",5,+
+                          if_else(testClass=="PATH",6,7)))))))
+testdatanum<-testdata[,-1]
+nzv<-nearZeroVar(testdatanum)
+testdatanumnzv<-testdatanum[,-nzv]
+```
+
+```{r echo=FALSE}
+predtestglm = predict(glmodel1, type="response", newdata=testdatanumnzv)
+table(testdatanumnzv$cl,predtestglm>0.95)
+
+```
+The test data prediction has also show a very low error rate (2/210=.01).
+
+#Tree model 1 without Cross Validation
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+library(rpart)
+library(rpart.plot)
+imageTree = rpart(Class ~ .,data=imageSegTranscl, method="class",control= rpart.control(minbucket=25))
+
+```
+
+
+```{r echo=FALSE}
+prp(imageTree)
+```
+The tree has picked quite a set of independent variables, of which HUE_MEAN and RAWRED_MEAN has been used more than once.
+
+###Prediction on the test data:
+```{r echo=FALSE}
+predicttree = predict(imageTree,newdata = testTranscl,type="class" )
+table(testTranscl$testClass, predicttree)
+
+```
+The prediction is not as good as the glm model.
+
+#Tree model 2 with cross validation
+```{r echo=FALSE}
+
+fitcontrol = trainControl(method="cv",number=10)
+cartgrid = expand.grid(.cp=(1:50)*.01)
+```
+We are choosing the number of folds for cross validation to be 10 and the range of cp parameter to be from .01 to .50
+
+```{r  echo=FALSE}
+
+train(Class~.,data=imageSegTranscl, method="rpart", trControl=fitcontrol, tuneGrid=cartgrid)
+```
+
+Optimal model chosen based on the accuracy with cp=.02.
+
+```{r}
+imageTreeCV = rpart(Class ~ . , method = "class", data = imageSegTranscl, control=rpart.control(cp=.02))
+predictTreeCV= predict(imageTreeCV, newdata=testTranscl, type= "class")
+table(testTranscl$testClass,predictTreeCV)
+```
+
+Cross validation does not seem to improve decision tree's prediction.
+
+###Tree model 3 with repeated cross validation
+```{r echo=FALSE}
+trctrl = trainControl(method = "repeatedcv", number=10, repeats = 3)
+set.seed(3333)
+dtree.fit = train(Class ~ ., data = imageSegTranscl, method = "rpart",
+                  parms = list(split= "information"),
+                  trControl = trctrl,
+                  tuneLength = 10)
+```
+
+###Trained decision tree classifier results
+
+```{r echo=FALSE}
+dtree.fit
+```
+
+###Visualizing the decision tree with prp plot
+
+```{r echo=FALSE}
+prp(dtree.fit$finalModel, box.palette = "Reds", tweak = 1.2)
+```
+
+
+###Predicting test data 
+```{r echo=FALSE}
+pred = predict(dtree.fit, newdata = testTranscl)
+confusionMatrix(pred, testTranscl$testClass)
+```
+
+
+###Random Forest model 1
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+library(randomForest)
+```
+```{r echo=FALSE}
+model.rf = randomForest(Class ~ ., data = imageSeg, nodesize = 25, ntree = 4000)
+print(model.rf)
+```
+
+###Random Forest model 2
+```{r echo=FALSE}
+model.rf2 = randomForest(Class ~ ., data=imageSegTranscl, nodesize=20, ntree=1000,importance = TRUE)
+print(model.rf2)
+round(importance(model.rf2),2)
+
+```
+We can see the oob estimate of error rate is increasing and decreasing.. 
+
+### Random Forest on test data
+```{r echo=FALSE}
+
+test.rf3 = randomForest(testClass ~ .,data=testTranscl,ntree=500)
+print(test.rf3)
+
+```
+On test data too, the prediction is not convincing.
+
+##RandomForest with cross validation
+
+```{r  echo=FALSE }
+fitcontrol = trainControl(method="cv",number=10)
+
+```
+
+```{r echo=FALSE}
+fitcontrol = trainControl(method="cv",number=10)
+imageForestCV = train(Class~., data=imageSegTranscl, method="rf", trControl=fitcontrol)
+print(imageForestCV)
+predForestCV = predict(imageForestCV, newdata = imageSegTranscl)
+table(imageSegTranscl$Class,predForestCV)
+```
+Wow!! it aced this time... 
+
+
+###Predicting the testdata using this model
+```{r echo=FALSE}
+predictForestCV = predict(imageForestCV, newdata = testTranscl)
+table(testTranscl$testClass,predictForestCV)
+```
+
+
+##Conclusion
+
+Since this dataset is multiple classification type and the features are not linearly correlated, **SVM model** with the parameters _cost=10_ and _gamma=0.5_ and the **Random Fores**t algorithm with _cross validation_ works the best.
+
+
+
+
