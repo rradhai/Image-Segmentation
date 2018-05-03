@@ -73,7 +73,7 @@ As per the plot, the variables are correlated as shown by the numbers above.
 ggplot(imageSeg,aes(x=VEDGE_MEAN,y=HEDGE_MEAN,col=Class))+geom_jitter()
 ```
 
-Also we can observe that Brickface has very low HEDGE_MEAN and VEDGE_MEAN. Also Cement has very low VEDGE_MEAN.
+Also we can observe that Brickface has very low HEDGE_MEAN and HEDGE_MEAN. Also Cement has very low VEDGE_MEAN.
 
 ###Correlation between the plotted features
 ```{r echo=FALSE}
