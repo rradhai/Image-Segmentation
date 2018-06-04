@@ -377,19 +377,30 @@ fitcontrol = trainControl(method="cv",number=10)
 
 ```
 
-```{r echo=FALSE}
+##RandomForest with cross validation
+
+```{r  echo=FALSE }
 fitcontrol = trainControl(method="cv",number=10)
-imageForestCV = train(Class~., data=imageSegTranscl, method="rf", trControl=fitcontrol)
-print(imageForestCV)
-predForestCV = predict(imageForestCV, newdata = imageSegTranscl)
-table(imageSegTranscl$Class,predForestCV)
+
 ```
-Wow!! it aced this time... 
+
+```{r echo=FALSE}
+x<-imageSegTranscl[,-1]
+y<-imageSegTranscl[,1]
+set.seed(500)
+modelRF.cv1 <- tuneRF(x, y, stepFactor=1.5, improve=1e-5,mtryStart = 7, ntree=400)
+print(modelRF.cv1)
+modelRF.cv2 <- tuneRF(x, y, stepFactor=1.5, improve=1e-5,mtryStart = 5, ntree=500)
+print(modelRF.cv2)
+
+model.rfcv = randomForest(Class ~ ., data=imageSegTranscl, mtry=5, ntree=400)
+print(model.rfcv)
+```
 
 
 ###Predicting the testdata using this model
 ```{r echo=FALSE}
-predictForestCV = predict(imageForestCV, newdata = testTranscl)
+predictForestCV = predict(model.rfcv, newdata = testTranscl)
 table(testTranscl$testClass,predictForestCV)
 ```
 
