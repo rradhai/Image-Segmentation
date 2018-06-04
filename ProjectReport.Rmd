@@ -370,19 +370,11 @@ print(test.rf3)
 ```
 On test data too, the prediction is not convincing.
 
-##RandomForest with cross validation
 
-```{r  echo=FALSE }
-fitcontrol = trainControl(method="cv",number=10)
-
-```
 
 ##RandomForest with cross validation
 
-```{r  echo=FALSE }
-fitcontrol = trainControl(method="cv",number=10)
 
-```
 
 ```{r echo=FALSE}
 x<-imageSegTranscl[,-1]
