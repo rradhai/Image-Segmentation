@@ -1,2 +1,2 @@
-# Capstone-Project
+# Image Segmentation
 Image Segmentation
